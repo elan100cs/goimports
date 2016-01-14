@@ -126,6 +126,7 @@ func walkDir(path string) {
 }
 
 func main() {
+	
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// call gofmtMain in a separate function
@@ -136,6 +137,9 @@ func main() {
 }
 
 func gofmtMain() {
+	var (
+		out     = flag.String("out", "", "file to save output to instead of stdout")
+	)
 	flag.Usage = usage
 	flag.Parse()
 
@@ -144,9 +148,21 @@ func gofmtMain() {
 		exitCode = 2
 		return
 	}
+	
+	var outWriter io.Writer
+	if len(*out) > 0 {
+		outFile, err := os.Create(*out)
+		if err != nil {
+			fatal(exitcodeDestFileFailed, err)
+		}
+		defer outFile.Close()
+		outWriter = outFile
+	} else {
+		outWriter = os.Stdout
+	}
 
 	if flag.NArg() == 0 {
-		if err := processFile("<standard input>", os.Stdin, os.Stdout, true); err != nil {
+		if err := processFile("<standard input>", os.Stdin, outWriter, true); err != nil {
 			report(err)
 		}
 		return
@@ -160,7 +176,7 @@ func gofmtMain() {
 		case dir.IsDir():
 			walkDir(path)
 		default:
-			if err := processFile(path, nil, os.Stdout, false); err != nil {
+			if err := processFile(path, nil, outWriter, false); err != nil {
 				report(err)
 			}
 		}
